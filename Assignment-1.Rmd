@@ -1,0 +1,29 @@
+---
+title: "Assignment - 1"
+output: html_document
+date: "2022-09-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import Dataset
+
+
+```{r}
+options(stringsAsFactors = FALSE)
+Walmart <- read.csv("~/Desktop/supriya/Walmart.csv")
+head(Walmart)
+```
+```{r}
+head(Walmart)
+tail(Walmart)
+summary(Walmart)
+attach(Walmart)
+hist(Walmart$Fuel_Price)
+hist(Walmart$CPI)
+plot(Fuel_Price,CPI,main = "Scatterplot")
+plot(Store,Weekly_Sales,main = "Scatterplot")
+
+```
