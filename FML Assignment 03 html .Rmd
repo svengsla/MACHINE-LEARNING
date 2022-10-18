@@ -1,0 +1,253 @@
+---
+title: "FML Assignment 03"
+author: "Sai Supriya"
+date: '2022-10-15'
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## \-\--
+
+#Importing the Dataset
+
+```{r}
+library(readr)
+UniversalBank_1_ <- read_csv("Downloads/UniversalBank (1).csv")
+str(UniversalBank_1_)
+
+
+```
+
+#calling Libraries
+
+```{r}
+library(caret)
+
+library(class)
+
+library(ISLR)
+
+```
+
+#Converting Personal Loan Variable
+
+```{r}
+UniversalBank_1_$`Personal Loan`=as.factor(UniversalBank_1_$`Personal Loan`)
+summary(UniversalBank_1_)
+```
+
+#Converting Online Variable
+
+```{r}
+UniversalBank_1_$Online = as.factor(UniversalBank_1_$Online) 
+
+summary(UniversalBank_1_$Online)
+```
+
+#Converting Creditcard Variable
+
+```{r}
+UniversalBank_1_$CreditCard = as.factor(UniversalBank_1_$CreditCard) 
+summary(UniversalBank_1_)
+
+UniversalBank_1_$Online<-as.factor(UniversalBank_1_$Online)
+is.factor(UniversalBank_1_$Online)
+UniversalBank_1_$CreditCard<-as.factor(UniversalBank_1_$CreditCard)
+is.factor(UniversalBank_1_$CreditCard)
+str(UniversalBank_1_)
+
+
+```
+
+#Task_A
+
+#Data Partition
+
+```{r}
+set.seed(64064)
+library(caret)
+Train_Index = createDataPartition(UniversalBank_1_$`Personal Loan`,p=0.60, list = FALSE) # 60% reserved for Train
+Train.df=UniversalBank_1_[Train_Index,]
+Validation.df=UniversalBank_1_[-Train_Index,]
+
+```
+##Data Normalization
+
+```{r}
+train.norm.df<-Train_Index_1
+validation.norm.df<-validation
+test.norm.df<-UniversalBank_1_
+maindata.norm.df<- UniversalBank_1_
+
+```
+
+```{r}
+
+mytable<- xtabs(~CreditCard+Online+`Personal Loan`, data = Train.df)
+
+
+ftable(mytable)
+
+```
+
+#Task_B:Consider the task of classifying a customer who owns a bank credit card and is actively using 
+online banking services. Looking at the pivot table, what is the probability that this customer 
+will accept the loan offer? [This is the probability of loan acceptance (Loan = 1) conditional on 
+having a bank credit card (CC = 1) and being an active user of online banking services (Online 
+= 1)]. 
+
+```{r}
+Probability = 59/(479+59)
+
+Probability
+
+```
+
+#Task_C:
+
+#Create two separate pivot tables for the training data. One will have Loan (rows) as a 
+function of Online (columns) and the other will have Loan (rows) as a function of CC. 
+```{r}
+table(CreditCard=Train.df$CreditCard, `Personal Loan`=Train.df$`Personal Loan`)
+
+
+
+```
+
+#pivot table with Personal loan as row and Online as column using training data.
+
+```{r}
+table(Online=Train.df$Online, `Personal Loan`=Train.df$`Personal Loan`)
+
+
+```
+
+#pivot table for Personal loan
+
+```{r}
+table(`Personal Loan`=Train.df$`Personal Loan`, CreditCard=Train.df$CreditCard)
+```
+
+#Task_D:
+
+#i.P(CC = 1 \| Loan = 1)(the proportion of credit card holders among the loan acceptors)
+
+```{r}
+Probability_1 = 93/(195+93)
+
+Probability_1
+
+```
+
+#ii.P(Online = 1 \| Loan = 1)
+
+```{r}
+Probability_2 = 179/(109+179)
+
+Probability_2
+
+```
+
+#iii.P(Loan = 1) (the proportion of loan acceptors)
+
+```{r}
+Probability_3 = 288/(2712+288)
+
+Probability_3
+
+```
+
+#iv.P(CC = 1 \| Loan = 0)
+
+```{r}
+Probability_4 = 788/(1924+788)
+
+Probability_4
+
+```
+
+#v.P(Online = 1 \| Loan = 0)
+
+```{r}
+Probability_5 = 1631/(1631+1081)
+
+Probability_5
+```
+
+#vi.P(Loan = 0)
+
+```{r}
+Probability_6 = 2712/(2712+288)
+
+Probability_6
+```
+
+#Task_E:Use the quantities computed above to compute the naive Bayes probability P(Loan = 1 | CC 
+= 1, Online = 1). 
+
+#P(Loan = 1 \| CC = 1, Online = 1).
+
+```{r}
+naive_Bayes_probability <- (Probability_1*Probability_2*Probability_3) / 
+
+                          ((Probability_1*Probability_2*Probability_3) + 
+
+                             (Probability_4*Probability_5*Probability_6))
+
+
+naive_Bayes_probability
+```
+
+#Task_F:Compare this value with the one obtained from the pivot table in (B).
+
+#Which is a more accurate estimate?
+
+```{r}
+#0.1087106 in task-E is very similar to the  0.1096654 in task-B.
+
+#The difference between the exact and naive bayes methods is that
+
+#the exact approach requires the same independent variable classifications to predict, 
+
+#whereas the naive bayes method does not.
+
+
+
+```
+
+#Task_G:
+
+\# P(Loan = 1 \| CC = 1, Online = 1)
+
+#Run naive Bayes on the data. Examine the model output on training data, and find the entry
+
+#that corresponds to P(Loan = 1 \| CC = 1, Online = 1). Compare this to the number you
+#obtained in (E).
+
+```{r}
+library(e1071)
+
+```
+
+```{r}
+
+library(naivebayes)
+library(mlbench)
+nb.model<- naiveBayes(`Personal Loan`~Online+CreditCard, data= Train.df)
+
+To_Predict=data.frame(Online= '1', CreditCard= '1')
+
+predict(nb.model,To_Predict,type='raw')
+
+
+```
+
+#The task-G value of 0.1087106 and the task-E value of 0.1087106 are identical.
+
+#As a result, the naive bayes produces the same results as the prior approaches.
