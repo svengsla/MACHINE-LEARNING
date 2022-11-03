@@ -1,0 +1,200 @@
+---
+title: "ML pharmaceuticals"
+author: "Sai Supriya"
+date: '2022-10-31'
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ## First CSV file and Required Packages are loaded 
+
+In this project, I'm using the k-means clustering technique to do a non-hierarchical cluster analysis.
+The goal is to divide the data into homogeneous clusters from which we may extract meaningful information.
+
+###Importing the dataset
+
+```{r results='hide'}
+#packages are loaded 
+library(caret)
+library(factoextra)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(cowplot)
+#Reading the dataset
+library(readr)
+Pharmaceuticals <- read.csv("Downloads/Pharmaceuticals.csv")
+view(Pharmaceuticals)
+head(Pharmaceuticals)
+str(Pharmaceuticals)
+summary(Pharmaceuticals)
+dim(Pharmaceuticals)
+colMeans(is.na(Pharmaceuticals))
+row.names(Pharmaceuticals) <- Pharmaceuticals[,2]
+Pharmaceuticals <- Pharmaceuticals[,-2]
+```
+1)Used only the numerical variables (1 to 9) to cluster the 21 firms. Justifying the various choices made in 
+conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) 
+used, the number of clusters formed,
+
+Focusing on a subset of the original dataset that only contains numerical variables till now.
+
+```{r}
+#with the exception of "Symbol" and the last 3 non-numerical variables
+Pharmaceuticals.Q1 <- Pharmaceuticals[,-c(1,11:13)]
+```
+
+## Normalizing and Clustering the data
+
+Here I calculated the distance between each observation because, the Euclidean distance metric is utilized by default and is scale sensitive, data must first be normalised before calculating the distance.
+
+```{r}
+#Normalizing data 
+norm.Pharmaceuticals.Q1<- scale(Pharmaceuticals.Q1)
+#Measuring and plotting distance between the observations
+distance <- get_dist(norm.Pharmaceuticals.Q1)
+fviz_dist(distance)
+```
+
+The graph depicts the intensity variation of color with distance. The diagonal represents that we had predicted which is in red, has a value of zero since it represents the distance between two observations in the graph.
+
+##Finding the optimal K value
+
+ The Elbow chart and the Silhouette Method are two of the most effective approaches for calculating the number of clusters for the k-means model when you don't have external factors influencing it.
+
+```{r}
+
+#Using elbow chart and silhouette method for calculating the kmeans
+
+WSS <- fviz_nbclust(norm.Pharmaceuticals.Q1, kmeans, method = "wss")
+Silhoutte <- fviz_nbclust(norm.Pharmaceuticals.Q1, kmeans, method = "silhouette")
+plot_grid(WSS, Silhoutte)
+```
+
+The plotted charts produces k=2,  k=5 for the methods  when used as Elbow and Silhoutte respectively.
+I am using the k-means method with k=5.
+```{r}
+#using k-means with k=5 for making clusters
+set.seed(646)
+KMeans.Pharmaceuticals.Opt <- kmeans(norm.Pharmaceuticals.Q1, centers = 5, nstart = 25)
+KMeans.Pharmaceuticals.Opt$centers
+KMeans.Pharmaceuticals.Opt$size
+KMeans.Pharmaceuticals.Opt$withinss
+fviz_cluster(KMeans.Pharmaceuticals.Opt, data = norm.Pharmaceuticals.Q1)
+```
+
+###Results:
+
+From the given data, we defined the five clusters depending on their distance from the cores.
+##1    Cluster.4 has a high Market Capital
+##2   Cluster n.2 has a high Beta and 
+##3   Cluster.5 does have a low Asset Turnover.
+##4) Cluster.1 has the most enterprises, whereas Cluste.3 has only two.
+
+
+##The within-cluster sum of squared distances reveal information regarding data dispersion:
+homogeneity
+cluster.1 (21.9) < cluster.3 (2.8).
+In the end visualizing the algorithm's output, we have observed the five groups into which the data has been grouped.
+
+##2)Interpreting the clusters with respect to the numerical variables used in forming the clusters. 
+Now Im running the model with 5 clusters as a basis to obtain btter results as using only 2 might lose the features of data.
+
+```{r}
+#using k-means algorithm with k=3 for making clusters
+set.seed(643)
+KMeans.Pharmaceuticals <- kmeans(norm.Pharmaceuticals.Q1, centers = 5, nstart = 25)
+KMeans.Pharmaceuticals$centers
+KMeans.Pharmaceuticals$size
+KMeans.Pharmaceuticals$withinss
+fviz_cluster(KMeans.Pharmaceuticals, data = norm.Pharmaceuticals.Q1)
+```
+
+We have identified the grouping and management of the clusters in the analysis.
+We can observe 4 data points in cluster.1, 11 data points in cluster.2, and 6 data points in cluster.3.
+
+
+```{r echo=FALSE}
+#Visualizing the output 
+
+Centroid <- data.frame(KMeans.Pharmaceuticals$centers) %>% 
+  rowid_to_column() %>% 
+  gather('Columns', 'Centers', -1)
+ggplot(Centroid, aes(x = Columns, y = Centers, color = as.factor(rowid))) + 
+  geom_line(aes(group = as.factor(rowid))) + geom_point()
+```
+#Task-b. Interpret the clusters with respect to the numerical variables used in forming the clusters.
+
+By looking at the mean values of all quantitative variables in each cluster.
+
+##Cluster 1 - 
+K( has highest Market_cap,ROA,ROE,Asset_Turnover and lowest is Beta,PE_Ratio.)
+
+##Cluster 2 -
+(has highest Rev_Growth and lowest PE_Ratio, Asset_Turnover.)
+
+##Cluster 3 - 
+has highest Beta, Leverage and lowest Market_Cap, ROE, ROA, Leverage, Rev_Growth, Net_Profit_Margin.
+
+##Cluster 4 - 
+has highest PE_Ratio and lowest Leverage, Asset_Turnover.
+##Cluster 5 - 
+has highest Net_Profit_Margin and lowest leverage,Beta.
+
+
+
+
+
+## Task C)Is there a pattern in the clusters with respect to the numerical variables (10 to 12)? (those not used in forming the clusters)
+
+Consider the last three categorical variables: Median Recommendation, Location, and Stock Exchange.
+In order to check for any trends in the data, I choose to utilize bar charts to graphically display the distribution of firms grouped by clusters.
+
+```{r}
+#data set partitioning for last 3 variables
+Pharmaceuticals.Q3 <-  Pharmaceuticals %>% select(c(11,12,13)) %>% 
+    mutate(Cluster = KMeans.Pharmaceuticals$cluster)
+```
+
+
+## TaskD) Providing an appropriate name for each cluster using any or all of the variables in the dataset. 
+
+```{r}
+#cluster plots
+Median_Recommendation <- ggplot(Pharmaceuticals.Q3, mapping = aes(factor(Cluster), fill=Median_Recommendation)) +
+  geom_bar(position = 'dodge') +
+  labs(x='Clusters', y='Frequence')
+Location <- ggplot(Pharmaceuticals.Q3, mapping = aes(factor(Cluster), fill=Location)) +
+  geom_bar(position = 'dodge') + 
+  labs(x='Clusters', y='Frequence')
+Stock_Exchange <- ggplot(Pharmaceuticals.Q3, mapping = aes(factor(Cluster), fill=Exchange)) +
+  geom_bar(position = 'dodge') + 
+  labs(x='Clusters', y='Frequence')
+plot_grid(Median_Recommendation, Location,Stock_Exchange)
+```
+
+
+The graph plainly illustrates that the majority of the companies in cluster 3 are based in the United States, and they all have a spread recommendation to hold their shares. They are all traded on the New York Stock Exchange. 
+
+In cluster.2, we choose "Moderate Buy" shares, and we include just two companies whose stocks are listed on other exchanges or indexes (AMEX and NASDAQ).
+
+Cluster.1 shows that the four firms are located in four different countries, and their stocks are traded on the NYSE.
+
+## In Conclusion
+Provide an appropriate name for each cluster using any or all of the variables in the dataset.
+
+Cluster-1 - Moderate Buy (or) Hold cluster.
+
+Cluster-2 - Low PE_Ratio, Asset_Turnover cluster (or) Hold cluster.
+
+Cluster-3 - High Beta, Leverage cluster (or) Buy Cluster.
+
+Cluster-4 - High PE_Ratio cluster (or) High Hold cluster.
+
+Cluster-5 - High Net_Profit_Margin cluster (or) High Hold cluster.
