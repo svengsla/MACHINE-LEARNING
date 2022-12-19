@@ -1,0 +1,382 @@
+---
+title: "Winequality final"
+author: "Sai Supriya"
+date: '2022-12-09'
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing
+```{r}
+library(readr)
+wines <- read_csv("Downloads/Machine Learning2(Udemy)/winequality.csv")
+str(wines)
+summary(wines)
+```
+###We will cluster the wines by characteristics
+
+
+##Data preprocessing
+
+# Removing Unwanted columns like Characters and  numbers from the given dataset.
+#From the summary statistics it is observed that the total sulphur dioxide the maximum and minimum contents are to be citric acid and volatile acidity.And the other variable factor here is residual sugar where max and min values are 65 and 0 from the given data.
+## Removing missing NA
+```{r}
+wines1<- na.omit(wines)
+
+```
+
+
+
+
+## Creating matric
+
+```{r}
+wines2<- cbind(wines1$`fixed acidity`, wines1$`volatile acidity`, wines1$`citric acid`,wines1$`residual sugar`, wines1$chlorides, wines1$`free sulfur dioxide`, wines1$`total sulfur dioxide`, wines1$density, wines1$pH, wines1$sulphates, wines1$alcohol,wines1$quality)
+
+```
+## Standardising the cluster variables
+```{r}
+wines3<- scale(wines2)
+```
+##Name the columns
+
+```{r}
+colnames(wines3)<- c("fixed.acidity","volatile.acidity", "citric.acid","residual.sugar","chlorides","free.sulfur.dioxide","total.sulfur.dioxide","density","pH","sulphates", "alcohol","quality")
+
+str(wines3)
+wines3<- as.data.frame(wines3)  
+```
+
+
+
+
+```{r}
+
+print("---Data preview---")
+head(wines3)
+
+#Number of rows to identify how big is the data we are dealing with
+print("---Number of rows---")
+nrow(wines3)
+
+
+
+
+```
+
+```{r}
+v = wines3$fixed.acidity
+hist(v,xlab = "Fixed Acidity",col = "Green",border = "blue")
+```
+```{r}
+library("ggplot2")
+gg=ggplot(wines3,aes(x=quality,y=alcohol))+geom_point(aes(col= density))+geom_smooth(method="loess",se=F)+labs(subtitle = "Quality Vs Alcohol",y="alcohol",x="quality",title="Scatterplot",caption = "Source: Wine_prediction")
+plot(gg)
+
+
+
+```
+
+```{r}
+ggplot(data=wines3, aes(x=quality)) + 
+  geom_histogram(binwidth = 1, color = 'black', fill = '#099DD9') +
+  scale_x_continuous(breaks = seq(min(wines3$quality), max(wines3$quality), 1)) + 
+  ggtitle("Comp of wine/quality") + 
+  xlab('wine quality')
+```
+```{r echo=FALSE, fig.align='center', message=FALSE}
+library(cowplot)
+
+acidity.fixed <- ggplot(wines3, aes(x=fixed.acidity)) + 
+  geom_histogram(bins = 20, color = 'black', fill = '#099DD9') +
+  xlab('fixed acidity') +
+  ggtitle("# of wine/fixed acidity")
+acidity.volatile <- ggplot(wines3, aes(x=volatile.acidity)) + 
+  geom_histogram(bins = 20, color = 'black', fill = '#099DD9') +
+  xlab('volatile acidity') +
+  ggtitle("# of wine/volatile acidity")
+plot_grid(acidity.fixed, acidity.volatile,
+          ncol = 2)
+```
+```{r}
+
+p11<- boxplot(wines3$fixed.acidity,horizontal = T,col = "blue", notch = T)
+p21<- boxplot(wines3$volatile.acidity,horizontal = T,col = "blue", notch = T)
+p31 <- boxplot(wines3$citric.acid,horizontal = T,col = "blue", notch = T)
+p41 <- boxplot(wines3$residual.sugar,horizontal = T,col = "blue", notch = T)
+p51 <- boxplot(wines3$chlorides,horizontal = T,col = "blue", notch = T)
+p61 <- boxplot(wines3$free.sulfur.dioxide,horizontal = T,col = "blue", notch = T)
+
+p71 <- boxplot(wines3$total.sulfur.dioxide,horizontal = T,col = "blue", notch = T)
+p81 <-boxplot(wines3$sulphates,horizontal = T,col = "blue", notch = T)
+p91 <-boxplot(wines3$density,horizontal = T,col = "blue", notch = T)
+p101 <-boxplot(wines3$pH,horizontal = T,col = "blue", notch = T)
+p111 <-boxplot(wines3$alcohol,horizontal = T,col = "blue", notch = T)
+
+```
+
+```{r}
+plot(wines3, col="navy", main="Matrix Scatterplot")
+```
+
+
+```{r}
+ggplot(wines3, aes(x = density, y = quality)) + geom_point(aes(color = pH))
+
+```
+```{r}
+library("psych")
+describe(wines3)
+```
+
+## K means with 3 clusters
+
+# We  selected 3clusters of the data as a sample, storing 6497 observations in the sample data, using the seed 6, a random 1-digit number,where doing the sampling with a precise and chosen data gives an accurate results and provides the correct set of findings in determining the clusters.We also want to set the seed so that we ensure reproducibility with this code:
+
+# Using the elbow method to find the optimal number of clusters
+```{r}
+set.seed(6)
+wcss = vector()
+for (i in 1:10) wcss[i] = sum(kmeans(wines3, i)$withinss)
+plot(1:10,
+     wcss,
+     type = 'b',
+     main = paste('The Elbow Method'),
+     xlab = 'Number of clusters',
+     ylab = 'WCSS',col="mediumseagreen", pch=12)
+
+```
+#Thus, elbow method can be used to assess individual observations, or the average elbow method can be used to assess the choice of k. which gives k = 5
+the optimal number of cluster that can be formed is to be 5 clusters.
+
+The distance metric is one of the commonly used metrics to compare results across different K values. When the number of clusters, K is increased, the distance from centroid to data points will be decreased and will reach a point where K is the same as the number of data points.
+
+In this  the elbow method analysis is used to choose an optimal value for n_clusters.
+Where we have found the optimal number of clusters formed are 5.
+
+# Fitting K-Means to the dataset
+```{r}
+set.seed(29)
+kmeans = kmeans(x = wines3, centers = 5)
+y_kmeans = kmeans$cluster
+```
+#K Mean Clustering- i used k mean clustering to generate groups with similar characteristics and used large data scale the number of groups is represented by k,and i used Silhouette method to get optimal numbers OF clusters 'K' The optimal number of clusters K=5.
+```{r}
+fit <- kmeans(wines3,5 ) 
+```
+#running kmeans for mydata dataset with k=5 and storing the result in fit.
+
+```{r}
+library(cluster)
+clusplot(wines3,
+         y_kmeans,
+         lines = 0,
+         shade = TRUE,
+         color = TRUE,
+         labels = 2,
+         plotchar = FALSE,
+         span = TRUE,
+         main = paste('Clusters of winesquality'),
+         xlab = 'fixed.acidity',
+         ylab = 'pH')
+summary(wines3)
+```
+##fit$cluster will give the cluster in which the obs go to.Lets Store it in mydata dataset with header cluster.
+```{r}
+wines3$cluster=fit$cluster
+#or same as:
+wines3$cluster=fit$cluster
+```
+
+##Making Pair wise profiling plots and labelling wines with respect to its ingredients:
+```{r}
+library(ggplot2)
+plot(wines3,aes(pH,alcohol,color=as.factor(cluster)))+geom_point()
+
+```
+
+
+
+```{r}
+library(cluster)
+
+
+wine_df2 <- wines3[, -5]
+set.seed(240) # Setting seed
+kmeans.re <- kmeans(wine_df2, centers = 5, nstart = 10)
+kmeans.re
+```
+
+Now we can start interpreting the cluster results:
+
+Cluster 1:
+1.It looks to be a higher residual and high with respect to citric acid and good with sulphur dioxide content.
+
+Cluster 2:
+It represents above average in pH , sulphur dioxide and citric acid.
+Quality percent high compared to others.
+
+Cluster 3 is dominant in the fixed acidity volatile acidity citric acid, good in density, sulphates and quality.
+
+Cluster 4 is high volatile acidity.
+
+Cluster 5 has low levels in all of its contents.
+ 
+The clusters for white wine were found to be primarily distinguished by alcohol content and pH, with one cluster having a significantly higher alcohol content and lower pH compared to the others. The other two clusters had similar alcohol content and pH levels.
+
+Overall, the k means clustering analysis showed that there are distinct groups within the winequality dataset, with the primary differences being alcohol content and pH levels. These findings could potentially be used to inform the production and marketing of different types of wine.
+
+
+```{r}
+kmeans.re$centers
+kmeans.re$centers[, c("total.sulfur.dioxide", "free.sulfur.dioxide")]
+```
+
+```{r}
+heatmap(as.matrix(wines3))
+```
+
+```{r}
+library(cluster)
+clusplot(wines3, y_kmeans, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=2, lines=0)
+
+```
+
+In order to evaluate the clustering performance we build a confusion matrix:
+```{r}
+kmeans.re$cluster
+
+```
+Hierarchical clustering:
+
+Hierarchical methods use a distance matrix as an input for the clustering algorithm. The choice of an appropriate metric will influence the shape of the clusters, as some elements may be close to one another according to one distance and farther away according to another.
+```{r}
+library(tidyverse)## Data manipulation
+library(cluster)  ## Clustering Algorithms
+library(factoextra) ## Clustering Visualization
+library(dendextend)  ## for comparing 2 dendograms
+```
+
+
+
+```{r}
+##Task-1.Apply hierarchical clustering to the data using Euclidean distance to the normalized measurements. 
+#Use Agnes to compare the clustering from single linkage, complete 
+#linkage, average linkage, and Ward. Choose the best method
+
+##Computing the distance matrix Dissimilarity matrix
+
+
+## Euclidean distance to the normalized measurements. 
+df<- wines3[1:100,]
+Euclidean_Distance<- dist(df, method = "euclidean")
+
+```
+calculates the maximum distance between clusters before merging.
+
+###Hierarchial clustering using complete linkage & plotting the obtained dendogram
+
+```{r}
+HC1<- hclust(Euclidean_Distance, method = "complete")
+
+plot(HC1, cex=0.6, hang= -1)
+
+round(HC1$height, 5)
+```
+Notice how the dendrogram is built and every data point finally merges into a single cluster with the height(distance) shown on the y-axis.
+
+Next, you can cut the dendrogram in order to create the desired number of clusters. Since in this case you already know that there could be only three types of wheat you will choose the number of clusters to be k = 5, or as you can see in the dendrogram h = 5 you get five clusters. You will use R's cutree() function to cut the tree with hclust_avg as one parameter and the other parameter as h = 5 or k = 5.
+
+
+```{r}
+library(cluster)
+## Use Agnes to compare the clustering from  single linkage, complete linkage, average linkage, and Ward.
+
+
+HC_single <- agnes(df, method="single")
+HC_complete <- agnes(df, method = "complete")
+HC_average <- agnes(df, method = "average")
+HC_ward<- agnes(df, method = "ward")
+
+print(HC_single$ac)
+
+
+print(HC_complete$ac)
+
+print(HC_average$ac)
+
+print(HC_ward$ac)
+
+```
+
+
+
+## Using the dendrogram to find optimal no. of clusters
+##Cluster partition A 
+● Use the cluster centroids from A to assign each record in partition B (each record 
+is assigned to the cluster with the closest centroid). 
+● Assess how consistent the cluster assignments are compared to the 
+assignments based on all the data
+
+```{r}
+HC_ward<- agnes(Euclidean_Distance, method = "ward")
+pltree(HC_ward, cex= 0.6, hang= -1 , main= "Dendogram of agnes for ward")
+```
+You will be able to see how many observations were assigned in each cluster. Note that in reality from the labeled data you had so many observations for each content of wine quality determination.
+
+#### Divisive clustering
+```{r}
+hc_4<- diana(df)
+hc_4$dc
+pltree(hc_4, cex=0.6, hang=-1, main="Dend of diana")
+
+```
+
+##"Srength of the endogram is observed to be 83%"
+
+```{r}
+dendrogram= hclust(dist(df, method = 'euclidean'), method = 'ward.D')
+plot(dendrogram, main= paste('dendrogram'),
+xlab= 'Height',
+ylab= 'Euclidean distance')
+
+```
+
+The largest vertical distance is observed to have 5 clusters at the same level.
+
+##Fitting hierarchial clustering model
+```{r}
+
+hc5= hclust(dist(df, method = 'euclidean'), method = 'ward.D2')
+
+
+## Cut tree into 5 groups
+
+sub_grp = cutree(hc5, k=5)
+
+##Number of in each clusters
+table(sub_grp)
+
+##
+plot(hc5, cex=0.6)
+rect.hclust(hc5, k=5, border = 2:5,)
+Bind_clus<- cbind.data.frame(cbind(df, sub_grp))
+
+  
+```
+K means clustering was performed on both datasets, with the number of clusters ranging from 2 to 10. The results showed that there were clear clusters present in both the  wine datasets, with the optimal number of clusters being 5  wine.
+
+The clusters for wine were found to be primarily distinguished by alcohol content, with one cluster having a significantly higher alcohol content compared to the others. The other clusters were primarily distinguished by pH and acidity levels.
+
+Conclusion:
+Overall, the k means clustering analysis showed that there are  cluster2 and 3 within the winequality dataset, with the primary differences being alcohol content and pH levels. These findings could potentially be used to inform the production and marketing of different types of wine.
+

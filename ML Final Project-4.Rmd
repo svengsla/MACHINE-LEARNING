@@ -1,0 +1,135 @@
+---
+title: "Mechine learning-Final project"
+author: "Harish Kunaparaju"
+date: "2022-11-30"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Clustring Algorithma & Visualization
+```{r}
+library(ISLR)
+library(pivottabler)
+library(dplyr)
+library(caret)
+library(mice)
+library(cluster)
+```
+#Importing dataset from the give data,Total number of Observations:608565 of 23 variables.
+```{r}
+Project<-read.csv("fuelcost.csv")
+str(Project)
+```
+
+# Removing Unwanted columns like Characters and id numbers from the given dataset.
+#From the summary statistics it is observed that the fuel_mmbtu_units the maximum and minimum consumption are to be 11 and 0 respectively.And the other variable factor here is ash_content_pct where max and min values are 0 and 72 from the given data.
+```{r}
+Fuelcost<- Project[,-c(1,2,3,4,5,8,9,15,17,18,19,20,21,22,23)]
+head(Fuelcost)
+summary(Fuelcost)
+```
+
+# The majority of the dataset is retained when using impute to replace missing data with substitute values. I selected the MICE program for the impute process since it effectively replaces missing values in datasets by examining data from other columns and provides the best prediction.
+```{r}
+fuel_impute<-mice(Fuelcost,m=5,maxit=10,meth='pmm',seed=500)
+com_fuelimp<- complete(fuel_impute,1)
+```
+# We randomly selected 2% of the data as a sample, storing 13000 observations in the sample data, using the seed 3333, a random 4-digit number,where doing the sampling with a precise and chosen data gives an accurate results and provides the correct set of findings in determining the clusters.We also want to set the seed so that we ensure reproducibility with this code:
+
+
+```{r}
+set.seed(3333)
+sampledata<-com_fuelimp[sample(nrow(com_fuelimp), size=13000), ]
+```
+
+# set up data partition 75% of sampled data as the tarining set and reaminng 25% used as a test data.Here the data is divided into train and test where prediction is done with the help of test with the other selected data.
+```{r}
+Train_index<-createDataPartition(sampledata$fuel_cost_per_mmbtu,p=.75,list=FALSE)
+traning<-sampledata[Train_index,]
+test<-sampledata[-Train_index,]
+```
+
+
+# Normalize the data while removing unnecessary variables from the training data, (such as Energy source code, fuel type code, and supplier name), Because I am only accepting numbers here.
+```{r}
+select_data<-traning[,-c(1,2,3)]
+
+Nordata<-preProcess(select_data,method = c("center", "scale"))
+Nor_Tdata<-predict(Nordata,select_data)
+summary(Nor_Tdata)
+```
+#Here The Silhouette Method is used to know how each member fits within its cluster by calculating its silhouette value.The silhouette value is a measure of how similar an observation is to its assigned cluster (cohesion) compared to the other clusters (separation). These values range from -1 (poor match within its assigned cluster) to +1 (perfect match within its assigned cluster).Silhoutte method represented with distnace to the cluster centroid insted of the average distance of all other data points in cluster In Business point of you silhoutte method can give 
+
+#K Mean Clustering- i used k mean clustering to generate groups with similar characteristics and used large data scale the number of groups is represented by k,and i used Silhouette method to get optimal numbers OF clusters 'K' The optimal number of clusters K=5.
+
+```{r}
+library(factoextra) # Determining and visualizing the optimal number of clusters.
+fviz_nbclust(Nor_Tdata, kmeans, method = "silhouette")
+```
+# We will just scale the data, make 5 clusters (our optimal number), and set nstart to 25 for simplicity.The centers argument describes the number of clusters we want, while the nstart argument describes a starting point for the algorithm. (Here it was specified for precise reproducibility, different starting points typically have minimal impact on the results)
+
+```{r}
+Fculter<-kmeans(Nor_Tdata,centers = 5,nstart = 25)
+Fculter$centers
+```
+#Thus, silhouettes can be used to assess individual observations, or the average silhouette can be used to assess the choice of k. which gives k = 5
+the optimal number of cluster that can be formed is to be 5 clusters.
+
+Silhouette coefficients (as these values are referred to as) near +1 indicate that the sample is far away from the neighboring clusters. A value of 0 indicates that the sample is on or very close to the decision boundary between two neighboring clusters and negative values indicate that those samples might have been assigned to the wrong cluster.
+
+In this  the silhouette analysis is used to choose an optimal value for n_clusters.
+Where we have found the optimal number of clusters formed are 5.
+
+ The silhouette plot shows that the n_clusters value of 3, 4  are a good pick for the given data due to the presence of clusters with below average silhouette scores and also due to wide fluctuations in the size of the silhouette plots. 
+Silhouette analysis is more ambivalent in deciding between 3 and 4.
+
+
+We can visualize these clusters using fviz_cluster, which shows the clusters (which are by default created using all columns of fuel costs using the first two principle components to define the X-Y coordinates of each observation.
+
+
+```{r}
+fviz_cluster(Fculter,data = select_data)
+```
+# 
+```{r}
+f_cluster<- Fculter$cluster
+fcluster<-cbind(traning[,-c(1,2,3)], f_cluster)
+head(fcluster)
+```
+# Here, I'm using aggregate data, which is easily helpful for statistical analysis, making it simple to locate important information for business analysis.
+```{r}
+aggregate(fcluster,by=list(Fculter$cluster),FUN="mean")
+```
+Now we can start interpreting the cluster results:
+
+Cluster 1:
+1.It looks to be a higher fuel_mmbtu_per_unit and high with respect to ash_content_pct and good with sulfur_content_pct (2.76)approximately
+
+Cluster 2:
+It represents least in sulfur_content_pct, ash_content_pct, and maintains above average value with fuel_cost_per_mmbtu.
+
+Cluster 3 is dominant in the fuel_received_units, very highly influenced with "fuel_cost_per_mmbtu"
+
+Cluster 4 is next in place with fuel_mmbtu_per_unit
+
+Cluster 5 might be either the fuel_mmbtu_per_unit and fuel_received_units are optimum.
+
+In order to better understand this, let's look at Clusters 1 and 5. As the fuel mmbtu per unit is used more, the fuel received unit will rise. I'd like to share a few reasons why this is happening. First, according to a recent report by Americangeoscience, there are three types of fossil fuels that are used more frequently in the USA: Natural gas (32%), oil (28%) and coal (17.8%).I want to talk about natural gas here. Electricity in the United States in 2019 consumes about 31% of all natural gas, and other businesses besides electricity also utilize it for operations. This is the key factor driving up natural gas use.When compared to other fuels, natural gas is less expensive and more readily available, which is why industries would prefer it.Another benefit of using natural gas is that it does not cause pollution. Compared to other fuels, natural gas is the most environmentally friendly since it produces more energy with less pollution.so moreover industries can save more money.
+
+
+# Add the coloumns names using Cbind
+```{r}
+new_data<- cbind(fcluster, traning$energy_source_code, traning$fuel_type_code_pudl, traning$supplier_name)
+head(new_data)
+```
+
+
+
+
+
+
